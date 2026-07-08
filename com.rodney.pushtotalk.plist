@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Run push-to-talk at login.
+
+  Install:
+    mkdir -p ~/Library/LaunchAgents
+    cp com.rodney.pushtotalk.plist ~/Library/LaunchAgents/
+    # edit the two <string> paths below to match your machine
+    launchctl load ~/Library/LaunchAgents/com.rodney.pushtotalk.plist
+
+  Stop / uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.rodney.pushtotalk.plist
+
+  NOTE: a launchd-spawned process needs Accessibility / Input Monitoring /
+  Microphone permissions granted to THIS python binary specifically (the one
+  in .venv/bin/python3). See README.md.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.rodney.pushtotalk</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/rodney/repos/push-to-talk/.venv/bin/python3</string>
+        <string>/Users/rodney/repos/push-to-talk/push_to_talk.py</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/rodney/repos/push-to-talk/ptt.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/rodney/repos/push-to-talk/ptt.log</string>
+</dict>
+</plist>
