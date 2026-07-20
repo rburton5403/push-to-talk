@@ -191,8 +191,17 @@ def _download(url: str, dest: str, timeout: float = 30.0) -> None:
     if have:
         req.add_header("Range", f"bytes={have}-")
 
+    # Go direct, ignoring env/system proxies. On macOS urllib picks up the
+    # system proxy settings (System Settings > Network > Proxies), so a stale
+    # or dead proxy makes this hang even when `curl` (which ignores them) works.
+    # Set PTT_USE_PROXY=1 to honor the configured proxy instead.
+    if os.environ.get("PTT_USE_PROXY"):
+        opener = urllib.request.build_opener()
+    else:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
     to_tty = sys.stdout.isatty()
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with opener.open(req, timeout=timeout) as resp:
         resuming = resp.status == 206  # server honored the Range request
         remaining = int(resp.headers.get("Content-Length", 0))
         total = (have + remaining) if resuming else remaining

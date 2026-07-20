@@ -13,8 +13,17 @@ BASE="${PTT_MODEL_S3:-https://rburton5403-push-to-talk-model.s3.us-east-2.amazon
 CONFIG_KEY="models--mlx-community--parakeet-tdt-0.6b-v2/blobs/8955c588b5549ef70811f2121c6c8bda33508992"
 WEIGHTS_KEY="models--mlx-community--parakeet-tdt-0.6b-v2/blobs/b958c37a6baa6874a279108755c8f2818e27bf647d72d54800a234a421341dfe"
 
-echo "== proxy env (a stale proxy makes downloads hang) =="
-env | grep -i proxy || echo "(no proxy vars set — good)"
+echo "== proxy env vars (a stale one makes downloads hang) =="
+env | grep -i proxy || echo "(no proxy env vars set)"
+echo
+
+echo "== proxies Python actually uses (incl. macOS system proxies) =="
+# curl ignores macOS System Settings > Network > Proxies, but Python's urllib
+# reads them. A dead one here hangs the app even when curl works. If this
+# prints anything, the app bypasses it unless PTT_USE_PROXY=1 is set.
+PY="python3"; [ -x .venv/bin/python ] && PY=".venv/bin/python"
+"$PY" -c "import urllib.request as u; print(u.getproxies() or '(none — good)')" 2>/dev/null \
+  || echo "(couldn't run python to check)"
 echo
 
 echo "== small file: full download to /dev/null (config.json, 36 KB) =="
