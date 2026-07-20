@@ -47,10 +47,11 @@ Hold **right Command (⌘)**, speak, release. Edit `PTT_KEY` near the top of
 
 ## macOS permissions (the only fiddly part)
 
-The process needs three permissions in **System Settings → Privacy &
+The process needs **three** permissions in **System Settings → Privacy &
 Security**. Crucially, the OS attaches them to *whatever launched python* —
 your terminal app when you run it by hand, or the `.venv/bin/python3` binary
-when launchd starts it.
+when launchd starts it. Running from **Terminal**? Grant all three to
+**Terminal** (using another terminal like iTerm? grant that instead).
 
 | Permission | Why |
 |---|---|
@@ -58,12 +59,27 @@ when launchd starts it.
 | **Input Monitoring** | detect the global push-to-talk key |
 | **Accessibility** | inject the transcribed text as keystrokes |
 
-If the key isn't detected or text won't inject, it's almost always a missing
-permission on the *wrong* binary. Running from Terminal? Grant Terminal. Using
-launchd? Add `.venv/bin/python3` explicitly (drag it in with `⌘⇧G` →
-the full path).
+Enable each one — the panes are all under **System Settings → Privacy &
+Security**:
 
-You'll also get a Gatekeeper prompt the first time — allow it.
+1. **Accessibility** → find **Terminal** in the list and toggle it **on** (if
+   it's not listed, click **+**, then Applications → Utilities → Terminal).
+2. **Input Monitoring** → toggle **Terminal** **on** the same way.
+3. **Microphone** → toggle **Terminal** **on**. (macOS also prompts for this
+   automatically the first time the app records — you can just click *Allow*.)
+
+Notes:
+
+- After you enable a permission, macOS may ask you to **quit and reopen
+  Terminal** — do it, so the new permission takes effect.
+- If Terminal then refuses to relaunch ("*Terminal is not open anymore*"),
+  **restart the Mac** — it clears the stale launch state, and the permissions
+  stay granted.
+- If the key isn't detected or text won't inject afterward, it's almost always
+  a permission granted to the *wrong* binary. Using launchd instead of a
+  terminal? Add `.venv/bin/python3` explicitly (in the picker, `⌘⇧G` → paste
+  the full path).
+- You'll also get a Gatekeeper prompt the first time — allow it.
 
 ## Using it with Claude Code / terminal apps
 
