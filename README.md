@@ -45,16 +45,6 @@ loads from disk. Env overrides:
 - `PTT_MODEL_DIR` — where to cache the downloaded weights (default `./model`).
 - `PTT_MODEL_S3` — base URL of the bucket holding the weights.
 
-## Run
-
-```bash
-source .venv/bin/activate
-python3 push_to_talk.py
-```
-
-Hold **right Command (⌘)**, speak, release. Edit `PTT_KEY` near the top of
-`push_to_talk.py` to change the key.
-
 ## macOS permissions (the only fiddly part)
 
 The process needs **three** permissions in **System Settings → Privacy &
@@ -90,6 +80,18 @@ Notes:
   terminal? Add `.venv/bin/python3` explicitly (in the picker, `⌘⇧G` → paste
   the full path).
 - You'll also get a Gatekeeper prompt the first time — allow it.
+
+## Run
+
+Once the three permissions above are granted:
+
+```bash
+source .venv/bin/activate
+python3 push_to_talk.py
+```
+
+Hold **right Command (⌘)**, speak, release. Edit `PTT_KEY` near the top of
+`push_to_talk.py` to change the key.
 
 ## Using it with Claude Code / terminal apps
 
