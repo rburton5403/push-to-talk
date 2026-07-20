@@ -1,12 +1,22 @@
 # push-to-talk
 
+> # 🔒 100% LOCAL — YOUR VOICE NEVER LEAVES YOUR MAC
+>
+> **Speech recognition runs entirely on-device via a local model. Your audio
+> and the transcribed text are _never_ uploaded, sent to any server, or shared
+> with any cloud service. No API keys, no accounts, no network calls for
+> transcription — it all happens on your own machine.**
+
 Local, offline push-to-talk dictation for **macOS on Apple Silicon**. Hold a
 key in any app, talk, release — your speech runs through the
 [Parakeet](https://huggingface.co/mlx-community/parakeet-tdt-0.6b-v2) model
 locally (via Apple MLX) and the text is typed into the focused app.
 
-Nothing leaves your machine. No app-store signing, no notarization — it just
-runs.
+No app-store signing, no notarization — it just runs.
+
+_(The only network access the app ever makes is a one-time download of the
+model weights on first run, cached locally forever after. After that, you can
+run it fully offline.)_
 
 ## Requirements
 
