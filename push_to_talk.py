@@ -176,6 +176,47 @@ def _fmt_mib(n: int) -> str:
 
 
 def _download(url: str, dest: str, timeout: float = 30.0) -> None:
+    """Download url to dest, preferring curl, falling back to Python urllib.
+
+    We prefer curl because it reliably works on networks where Python's stack
+    stalls (e.g. a black-holed IPv6 route, or TLS inspection Python's cert
+    bundle rejects) — and it shows its own live progress meter. Force one or the
+    other with PTT_DOWNLOADER=curl|python.
+    """
+    import shutil
+
+    choice = os.environ.get("PTT_DOWNLOADER", "").lower()
+    use_curl = shutil.which("curl") and choice != "python"
+
+    if use_curl:
+        try:
+            _download_curl(url, dest, timeout)
+            return
+        except Exception as e:
+            if choice == "curl":
+                raise
+            log(f"  curl download failed ({e}); falling back to Python...")
+
+    _download_urllib(url, dest, timeout)
+
+
+def _download_curl(url: str, dest: str, timeout: float) -> None:
+    """Download via the curl binary. Resumes .part, shows curl's own progress."""
+    tmp = dest + ".part"
+    # -f: fail on HTTP errors; -L: follow redirects; -C -: resume from .part;
+    # --connect-timeout: bail fast on a dead route instead of hanging.
+    cmd = [
+        "curl", "-fL", "-C", "-",
+        "--connect-timeout", str(int(timeout)),
+        "-o", tmp, url,
+    ]
+    rc = subprocess.call(cmd)
+    if rc != 0:
+        raise RuntimeError(f"curl exited {rc}")
+    os.replace(tmp, dest)
+
+
+def _download_urllib(url: str, dest: str, timeout: float = 30.0) -> None:
     """Stream a URL to dest atomically (via a .part file), with live progress.
 
     Resumes a partial .part file via an HTTP Range request. `timeout` applies
