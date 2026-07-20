@@ -12,6 +12,11 @@ runs.
 
 - Apple Silicon Mac (M1 or newer). The MLX model needs it.
 - Python 3.10+
+- [Homebrew](https://brew.sh) and `ffmpeg` (used to decode the recorded audio):
+
+  ```bash
+  brew install ffmpeg
+  ```
 
 ## Setup
 
@@ -19,7 +24,7 @@ runs.
 cd ~/repos/push-to-talk
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt   # Python deps; ffmpeg is installed separately (above)
 ```
 
 The model weights (~2.3 GB) live in a public S3 bucket, not in this repo. On
