@@ -171,25 +171,77 @@ class Recorder:
             return np.concatenate(self._frames).flatten()
 
 
-def _download(url: str, dest: str) -> None:
-    """Stream a URL to dest atomically (via a .part file), with progress."""
+def _fmt_mib(n: int) -> str:
+    return f"{n / (1 << 20):.0f}"
+
+
+def _download(url: str, dest: str, timeout: float = 30.0) -> None:
+    """Stream a URL to dest atomically (via a .part file), with live progress.
+
+    Resumes a partial .part file via an HTTP Range request. `timeout` applies
+    to each socket operation, so a stalled connection raises instead of hanging
+    forever (it does not cap the total transfer time).
+    """
     import urllib.request
 
     tmp = dest + ".part"
-    with urllib.request.urlopen(url) as resp:
-        total = int(resp.headers.get("Content-Length", 0))
-        done = 0
+    have = os.path.getsize(tmp) if os.path.exists(tmp) else 0
+
+    req = urllib.request.Request(url)
+    if have:
+        req.add_header("Range", f"bytes={have}-")
+
+    to_tty = sys.stdout.isatty()
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        resuming = resp.status == 206  # server honored the Range request
+        remaining = int(resp.headers.get("Content-Length", 0))
+        total = (have + remaining) if resuming else remaining
+        if not resuming:
+            have = 0  # server ignored Range; restart from scratch
+        done = have
+        mode = "ab" if resuming else "wb"
+
+        if resuming:
+            log(f"  resuming at {_fmt_mib(have)} MiB")
+
+        start = time.monotonic()
+        last_emit = 0.0
         next_pct = 10
-        with open(tmp, "wb") as f:
+        with open(tmp, mode) as f:
             while True:
                 chunk = resp.read(1 << 20)  # 1 MiB
                 if not chunk:
                     break
                 f.write(chunk)
                 done += len(chunk)
-                if total and done * 100 // total >= next_pct:
-                    log(f"  {done // (1 << 20)}/{total // (1 << 20)} MiB")
+
+                now = time.monotonic()
+                elapsed = now - start
+                speed = (done - have) / elapsed / (1 << 20) if elapsed > 0 else 0
+                if to_tty:
+                    # Live single-line progress, refreshed a few times a second.
+                    if now - last_emit >= 0.25 or done == total:
+                        last_emit = now
+                        pct = f"{done * 100 // total}%" if total else "?"
+                        eta = (
+                            f" eta {int((total - done) / (speed * (1 << 20)))}s"
+                            if total and speed > 0
+                            else ""
+                        )
+                        sys.stdout.write(
+                            f"\r[ptt]   {pct}  {_fmt_mib(done)}/"
+                            f"{_fmt_mib(total) if total else '?'} MiB  "
+                            f"{speed:.1f} MB/s{eta}   "
+                        )
+                        sys.stdout.flush()
+                elif total and done * 100 // total >= next_pct:
+                    # Non-TTY (log file / launchd): one line per 10%.
+                    log(f"  {done * 100 // total}%  {_fmt_mib(done)}/"
+                        f"{_fmt_mib(total)} MiB  {speed:.1f} MB/s")
                     next_pct += 10
+        if to_tty:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
     os.replace(tmp, dest)
 
 
