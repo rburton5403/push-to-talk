@@ -22,7 +22,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-First run downloads the model weights from HuggingFace (~600 MB, cached after).
+The model weights (~2.3 GB) live in a public S3 bucket, not in this repo. On
+first run they're downloaded into `model/` and cached there; every run after
+loads from disk. Env overrides:
+
+- `PTT_MODEL` — a HuggingFace id or an existing local model dir; skips S3.
+- `PTT_MODEL_DIR` — where to cache the downloaded weights (default `./model`).
+- `PTT_MODEL_S3` — base URL of the bucket holding the weights.
 
 ## Run
 
@@ -31,7 +37,7 @@ source .venv/bin/activate
 python3 push_to_talk.py
 ```
 
-Hold **F8**, speak, release. Edit `PTT_KEY` near the top of
+Hold **right Command (⌘)**, speak, release. Edit `PTT_KEY` near the top of
 `push_to_talk.py` to change the key.
 
 ## macOS permissions (the only fiddly part)
@@ -91,7 +97,8 @@ Logs go to `ptt.log`.
 All knobs are constants at the top of `push_to_talk.py`:
 
 - `PTT_KEY` — the push-to-talk key.
-- `MODEL_ID` — try a different Parakeet variant (or set `PTT_MODEL` env var).
+- `MODEL_DIR` / `S3_BASE_URL` — where weights are cached / fetched from (or set
+  the `PTT_MODEL`, `PTT_MODEL_DIR`, `PTT_MODEL_S3` env vars).
 - `USE_CLIPBOARD_PASTE` — `True` pastes via ⌘V (fast, robust, briefly uses your
   clipboard and restores it); `False` simulates each keystroke instead.
 - `MIN_SECONDS` — ignore accidental short taps.

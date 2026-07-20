@@ -1,1 +1,5 @@
 __pycache__/
+
+# Model weights (downloaded from S3 on first run, or HuggingFace cache dirs)
+model/
+models--*/

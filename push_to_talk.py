@@ -32,8 +32,35 @@ from pynput import keyboard
 # keyboard.Key.alt_r (right Option), etc.
 PTT_KEY = keyboard.Key.cmd_r
 
-# HuggingFace model id (pulled + cached on first run).
-MODEL_ID = os.environ.get("PTT_MODEL", "mlx-community/parakeet-tdt-0.6b-v2")
+# Model weights are hosted in a public S3 bucket and cached locally on first
+# run (they're too big for git). We download config.json + model.safetensors
+# into MODEL_DIR, which parakeet-mlx's from_pretrained() loads as a plain dir.
+#
+# Overrides:
+#   PTT_MODEL      - a HuggingFace id or an existing local model dir; skips S3
+#   PTT_MODEL_DIR  - where to cache the downloaded weights
+#   PTT_MODEL_S3   - base URL of the bucket holding the files below
+_REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+
+MODEL_DIR = os.environ.get("PTT_MODEL_DIR", os.path.join(_REPO_DIR, "model"))
+
+S3_BASE_URL = os.environ.get(
+    "PTT_MODEL_S3",
+    "https://rburton5403-push-to-talk-model.s3.us-east-2.amazonaws.com",
+)
+
+# Local filename -> S3 object key. The keys are the HuggingFace cache blob
+# hashes as uploaded; if the model is re-uploaded, update these.
+_MODEL_FILES = {
+    "config.json": (
+        "models--mlx-community--parakeet-tdt-0.6b-v2/blobs/"
+        "8955c588b5549ef70811f2121c6c8bda33508992"
+    ),
+    "model.safetensors": (
+        "models--mlx-community--parakeet-tdt-0.6b-v2/blobs/"
+        "b958c37a6baa6874a279108755c8f2818e27bf647d72d54800a234a421341dfe"
+    ),
+}
 
 # Parakeet expects 16 kHz mono audio.
 SAMPLE_RATE = 16000
@@ -144,11 +171,57 @@ class Recorder:
             return np.concatenate(self._frames).flatten()
 
 
+def _download(url: str, dest: str) -> None:
+    """Stream a URL to dest atomically (via a .part file), with progress."""
+    import urllib.request
+
+    tmp = dest + ".part"
+    with urllib.request.urlopen(url) as resp:
+        total = int(resp.headers.get("Content-Length", 0))
+        done = 0
+        next_pct = 10
+        with open(tmp, "wb") as f:
+            while True:
+                chunk = resp.read(1 << 20)  # 1 MiB
+                if not chunk:
+                    break
+                f.write(chunk)
+                done += len(chunk)
+                if total and done * 100 // total >= next_pct:
+                    log(f"  {done // (1 << 20)}/{total // (1 << 20)} MiB")
+                    next_pct += 10
+    os.replace(tmp, dest)
+
+
+def ensure_model() -> str:
+    """Return a local model dir, downloading weights from S3 if not cached."""
+    override = os.environ.get("PTT_MODEL")
+    if override:
+        return override  # HuggingFace id or an existing local path
+
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    for fname, key in _MODEL_FILES.items():
+        dest = os.path.join(MODEL_DIR, fname)
+        if os.path.exists(dest):
+            continue
+        log(f"downloading {fname} from S3 (first run only)...")
+        try:
+            _download(f"{S3_BASE_URL}/{key}", dest)
+        except Exception as e:
+            raise SystemExit(
+                f"failed to download {fname}: {e}\n"
+                f"  URL: {S3_BASE_URL}/{key}\n"
+                "  Check the bucket is reachable and the objects are public."
+            )
+    return MODEL_DIR
+
+
 def load_model():
-    log(f"loading model {MODEL_ID} (first run downloads weights)...")
+    model_path = ensure_model()
+    log(f"loading model from {model_path}...")
     from parakeet_mlx import from_pretrained
 
-    model = from_pretrained(MODEL_ID)
+    model = from_pretrained(model_path)
     log("model ready.")
     return model
 
